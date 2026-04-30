@@ -1,0 +1,6 @@
+{
+  "name": "FandomWiki",
+  "description": "A collaborative fandom wiki platform for creating, connecting, and editing world-building pages with internal linking and version history.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
