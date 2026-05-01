@@ -6,9 +6,9 @@ import { cn } from '@/src/lib/utils';
 const categories = [
   { name: 'Anime', color: 'bg-orange-500' },
   { name: 'Gaming', color: 'bg-blue-500' },
-  { name: 'Fictional', color: 'bg-purple-600' },
-  { name: 'Movies', color: 'bg-red-600' },
-  { name: 'Tech', color: 'bg-emerald-500' },
+  { name: 'Marvel', color: 'bg-red-600' },
+  { name: 'DC', color: 'bg-blue-800' },
+  { name: 'Other', color: 'bg-slate-500' },
 ];
 
 export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {

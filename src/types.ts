@@ -9,14 +9,37 @@ export interface UserProfile {
   created_at: string;
 }
 
+export interface Character {
+  id: string;
+  name: string;
+  alias?: string;
+  gender?: string;
+  age?: string;
+  origin?: string;
+  affiliation?: string;
+  image_url?: string;
+  created_at?: string;
+}
+
+export interface CharacterInfo {
+  name: string;
+  alias?: string;
+  gender?: string;
+  age?: string;
+  origin?: string;
+  affiliation?: string;
+  image_url?: string;
+}
+
 export interface WikiPage {
   id: string;
   title: string;
   slug: string;
   content: string;
   author_id: string;
-  category: 'Anime' | 'Game' | 'Marvel' | 'DC' | 'Other';
+  category: 'Anime' | 'Gaming' | 'Marvel' | 'DC' | 'Other';
   image_url?: string;
+  character?: CharacterInfo | null;
   created_at: string;
   updated_at: string;
 }

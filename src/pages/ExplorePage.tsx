@@ -5,7 +5,7 @@ import { WikiPage } from '@/src/types';
 import { Search, Filter, TrendingUp, Grid, List as ListIcon, ChevronRight, BookOpen } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 
-const categories = ['Anime', 'Gaming', 'Fictional', 'Movies', 'Tech', 'Other'];
+const categories = ['Anime', 'Gaming', 'Marvel', 'DC', 'Other'];
 
 export default function ExplorePage() {
   const [pages, setPages] = React.useState<WikiPage[]>([]);
