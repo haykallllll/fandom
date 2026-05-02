@@ -10,6 +10,7 @@ import ProfilePage from './pages/ProfilePage';
 import ExplorePage from './pages/ExplorePage';
 import RecentChangesPage from './pages/RecentChangesPage';
 import CategoryPage from './pages/CategoryPage';
+import NotFound from './pages/NotFound';
 import { supabase } from './lib/supabase';
 
 export default function App() {
@@ -45,7 +46,11 @@ export default function App() {
                 <Route path="/category/:category" element={<CategoryPage />} />
                 <Route path="/about" element={<div className="py-20 text-center"><h1 className="text-4xl font-extrabold mb-4">Guidelines</h1><p className="text-slate-500">Coming soon.</p></div>} />
                 <Route path="/help" element={<div className="py-20 text-center"><h1 className="text-4xl font-extrabold mb-4">Settings</h1><p className="text-slate-500">Coming soon.</p></div>} />
+                
+                {/* Wiki and Character Routes */}
                 <Route path="/wiki/:slug" element={<WikiPageDetail />} />
+                <Route path="/character/:slug" element={<WikiPageDetail />} />
+                
                 <Route 
                   path="/create" 
                   element={session ? <WikiPageEditor /> : <Navigate to="/auth" />} 
@@ -59,6 +64,9 @@ export default function App() {
                   path="/profile" 
                   element={session ? <ProfilePage /> : <Navigate to="/auth" />} 
                 />
+
+                {/* 404 Fallback */}
+                <Route path="*" element={<NotFound />} />
               </Routes>
             </div>
           </main>
