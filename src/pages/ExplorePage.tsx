@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { supabase } from '@/src/lib/supabase';
 import { WikiPage } from '@/src/types';
 import { Search, Filter, TrendingUp, Grid, List as ListIcon, ChevronRight, BookOpen } from 'lucide-react';
-import { cn } from '@/src/lib/utils';
+import { cn, parseCharacterMetadata } from '@/src/lib/utils';
 
 const categories = ['Anime', 'Gaming', 'Marvel', 'DC', 'Other'];
 
@@ -20,13 +20,27 @@ export default function ExplorePage() {
 
   const fetchPages = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('pages')
-      .select('*')
-      .order('updated_at', { ascending: false });
+    console.log('Explore: Fetching all pages...');
+    try {
+      const { data, error } = await supabase
+        .from('pages')
+        .select('*')
+        .order('updated_at', { ascending: false });
 
-    if (!error) setPages(data || []);
-    setLoading(false);
+      if (error) throw error;
+      
+      const processedPages = (data || []).map(p => ({
+        ...p,
+        character: parseCharacterMetadata(p.content || '')
+      }));
+      
+      console.log('Explore: Pages fetched:', processedPages.length);
+      setPages(processedPages);
+    } catch (err) {
+      console.error('Explore: Error fetching pages:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const filteredPages = pages.filter(page => {
@@ -153,17 +167,29 @@ export default function ExplorePage() {
                 </div>
               </div>
               
-              <div className="p-6 flex-1 flex flex-col justify-center">
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="text-xl font-bold group-hover:text-indigo-600 transition-colors tracking-tight line-clamp-1">
+              <div className={cn(
+                "p-6 flex-1 flex flex-col justify-center",
+                viewMode === 'list' && "py-2"
+              )}>
+                <div className="flex justify-between items-start mb-1">
+                  <h3 className={cn(
+                    "font-bold group-hover:text-indigo-600 transition-colors tracking-tight line-clamp-1",
+                    viewMode === 'grid' ? "text-xl" : "text-lg"
+                  )}>
                     {page.title}
                   </h3>
                   {viewMode === 'list' && <TrendingUp size={16} className="text-emerald-500" />}
                 </div>
                 
+                {page.character?.alias && (
+                  <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest mb-2">"{page.character.alias}"</p>
+                )}
+
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="w-5 h-5 rounded-full bg-indigo-50 border border-slate-100" />
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Chronicler #42</span>
+                  <div className="w-5 h-5 rounded-full bg-indigo-50 border border-slate-100 overflow-hidden">
+                    <img src={`https://i.pravatar.cc/100?u=${page.author_id}`} alt="avatar" />
+                  </div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Chronicler Lore</span>
                 </div>
 
                 <div className="mt-auto flex items-center justify-between">

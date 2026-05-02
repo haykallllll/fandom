@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { supabase } from '@/src/lib/supabase';
 import { WikiPage } from '@/src/types';
 import { Book, Zap, TrendingUp, Clock, ChevronRight } from 'lucide-react';
+import { parseCharacterMetadata } from '@/src/lib/utils';
 
 export default function Home() {
   const [pages, setPages] = React.useState<WikiPage[]>([]);
@@ -14,6 +15,7 @@ export default function Home() {
 
   const fetchPages = async () => {
     try {
+      console.log('Home: Fetching recent pages...');
       const { data, error } = await supabase
         .from('pages')
         .select('*')
@@ -21,9 +23,16 @@ export default function Home() {
         .limit(6);
       
       if (error) throw error;
-      setPages(data || []);
+      
+      const processedPages = (data || []).map(p => ({
+        ...p,
+        character: parseCharacterMetadata(p.content || '')
+      }));
+      
+      console.log('Home: Pages fetched and processed:', processedPages.length);
+      setPages(processedPages);
     } catch (err) {
-      console.error('Error fetching pages:', err);
+      console.error('Home: Error fetching pages:', err);
     } finally {
       setLoading(false);
     }
@@ -31,19 +40,18 @@ export default function Home() {
 
   return (
     <div className="space-y-8 pb-20">
-      {/* Hero Section */}
       <section className="bg-slate-900 rounded-[2rem] p-10 md:p-16 text-white relative overflow-hidden shadow-2xl">
         <div className="relative z-10 max-w-2xl">
           <div className="flex items-center gap-2 mb-6">
             <span className="px-3 py-1 bg-indigo-600 rounded-full text-[10px] font-bold uppercase tracking-widest">Featured</span>
-            <span className="text-slate-400 text-xs font-medium">Updated 2m ago</span>
+            <span className="text-slate-400 text-xs font-medium">Updated live</span>
           </div>
           <h1 className="text-4xl md:text-7xl font-sans font-extrabold mb-6 leading-[1.1] tracking-tight">
             Knowledge is <br/> Collaborative.
           </h1>
           <p className="text-slate-400 text-lg mb-10 leading-relaxed max-w-lg">
             Join the decentralized encyclopedia for fictional universes. 
-            Document characters, items, and lore in a modern Bento interface.
+            Document your favorite characters, items, and lore in a modern Bento interface.
           </p>
           <div className="flex flex-wrap gap-4">
             <Link to="/create" className="bg-indigo-600 text-white px-8 py-4 rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg hover:-translate-y-0.5 active:translate-y-0">
@@ -67,7 +75,7 @@ export default function Home() {
             <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 mb-6 font-bold text-xl shadow-inner">
               <Zap size={24} />
             </div>
-            <h3 className="font-sans font-extrabold text-2xl mb-3 tracking-tight">Real-time Editing</h3>
+            <h3 className="font-sans font-extrabold text-2xl mb-3 tracking-tight text-slate-900">Real-time Editing</h3>
             <p className="text-slate-500 text-sm leading-relaxed">Collaborate with thousands of editors worldwide to build the most comprehensive database.</p>
           </div>
           <div className="mt-8 flex -space-x-3">
@@ -119,13 +127,14 @@ export default function Home() {
               <Link 
                 key={page.id} 
                 to={`/wiki/${page.slug}`}
-                className="group bento-card overflow-hidden flex flex-col"
+                className="group bento-card overflow-hidden flex flex-col bg-white border border-slate-200 rounded-3xl shadow-sm hover:shadow-xl hover:border-indigo-100 transition-all"
               >
                 <div className="h-48 bg-slate-100 overflow-hidden relative">
                   <img 
                     src={page.image_url || `https://picsum.photos/seed/${page.slug}/800/600`} 
                     alt={page.title}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
+                    loading="lazy"
                   />
                   <div className="absolute top-4 left-4">
                     <span className="bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest text-slate-900 shadow-sm">
@@ -134,18 +143,23 @@ export default function Home() {
                   </div>
                 </div>
                 <div className="p-6 flex-1 flex flex-col">
-                  <h3 className="text-xl font-bold mb-2 group-hover:text-indigo-600 transition-colors tracking-tight">
+                  <h3 className="text-xl font-bold mb-1 group-hover:text-indigo-600 transition-colors tracking-tight line-clamp-1">
                     {page.title}
                   </h3>
-                  <div className="flex items-center gap-2 mb-4">
-                    <div className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200" />
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">Editor #42</span>
+                  {page.character?.alias && (
+                    <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest mb-3">"{page.character.alias}"</p>
+                  )}
+                  <div className="flex items-center gap-2 mb-4 mt-1">
+                    <div className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 overflow-hidden">
+                       <img src={`https://i.pravatar.cc/100?u=${page.author_id}`} alt="avatar" />
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">Editor Lore</span>
                   </div>
                   <div className="mt-auto flex items-center justify-between">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                       {new Date(page.updated_at).toLocaleDateString()}
                     </span>
-                    <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-all">
+                    <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-all font-bold">
                       <ChevronRight size={16} />
                     </div>
                   </div>

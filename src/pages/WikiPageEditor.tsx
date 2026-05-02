@@ -44,7 +44,9 @@ export default function WikiPageEditor() {
   
   const [pageType, setPageType] = React.useState<'Standard' | 'Character'>('Standard');
   const [isInfoboxUploading, setIsInfoboxUploading] = React.useState(false);
+  const [isBannerUploading, setIsBannerUploading] = React.useState(false);
   const portraitInputRef = React.useRef<HTMLInputElement>(null);
+  const bannerInputRef = React.useRef<HTMLInputElement>(null);
   
   const [infobox, setInfobox] = React.useState<CharacterInfo>({
     name: '',
@@ -123,13 +125,14 @@ export default function WikiPageEditor() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Basic validation
+    console.log('Starting portrait upload:', file.name, file.size, file.type);
+
     if (!file.type.startsWith('image/')) {
       alert('Please upload an image file (JPG, PNG, WebP)');
       return;
     }
-    if (file.size > 2 * 1024 * 1024) {
-      alert('File is too large. Max 2MB allowed.');
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File is too large. Max 5MB allowed.');
       return;
     }
 
@@ -139,36 +142,81 @@ export default function WikiPageEditor() {
       const fileName = `portrait-${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
       const filePath = `portraits/${fileName}`;
 
-      const { data, error } = await supabase.storage
+      const { data, error: uploadError } = await supabase.storage
         .from('images')
-        .upload(filePath, file);
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
 
-      if (error) {
-        console.error('Portrait upload error:', error);
-        // Fallback to Base64 if storage is not setup
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          const result = event.target?.result;
-          if (typeof result === 'string') {
-            handleInfoboxChange('image_url', result);
-          }
-        };
-        reader.readAsDataURL(file);
-        return;
+      if (uploadError) {
+        console.error('Supabase Storage Error:', uploadError);
+        throw new Error(uploadError.message);
       }
 
+      console.log('Upload successful:', data);
+
       const { data: { publicUrl } } = supabase.storage.from('images').getPublicUrl(filePath);
+      console.log('Public URL generated:', publicUrl);
+      
       handleInfoboxChange('image_url', publicUrl);
     } catch (err: any) {
-      console.error('Upload failed:', err);
+      console.error('Upload failed, falling back to local preview:', err);
+      // Fallback to local preview so user can at least see it before saving (though Base64 is huge)
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const result = event.target?.result;
+        if (typeof result === 'string') {
+          handleInfoboxChange('image_url', result);
+        }
+      };
+      reader.readAsDataURL(file);
+      setError(`Gagal upload ke storage: ${err.message}. Menggunakan preview lokal.`);
     } finally {
       setIsInfoboxUploading(false);
       if (e.target) e.target.value = '';
     }
   };
 
+  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    console.log('Starting banner upload:', file.name);
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload an image file');
+      return;
+    }
+
+    setIsBannerUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `banner-${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `banners/${fileName}`;
+
+      const { data, error: uploadError } = await supabase.storage
+        .from('images')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage.from('images').getPublicUrl(filePath);
+      console.log('Banner Public URL:', publicUrl);
+      setImageUrl(publicUrl);
+    } catch (err: any) {
+      console.error('Banner upload failed:', err);
+      setError(`Gagal upload banner: ${err.message}`);
+    } finally {
+      setIsBannerUploading(false);
+      if (e.target) e.target.value = '';
+    }
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Attempting to save page:', title);
+
     if (!title || !content) {
       setError('Judul dan isi konten wajib diisi.');
       return;
@@ -195,6 +243,7 @@ export default function WikiPageEditor() {
           affiliation: infobox.affiliation,
           image_url: infobox.image_url
         };
+        console.log('Embedding character metadata:', charData);
         finalContent = `<!-- CHARACTER_DATA: ${JSON.stringify(charData)} -->\n${content}`;
       }
 
@@ -209,6 +258,8 @@ export default function WikiPageEditor() {
         updated_at: new Date().toISOString()
       };
 
+      console.log('Sending data to Supabase (pages table):', pageData);
+
       let pageId: string;
 
       if (isEditing) {
@@ -221,6 +272,7 @@ export default function WikiPageEditor() {
         
         if (updateError) throw updateError;
         pageId = data.id;
+        console.log('Page updated successfully, ID:', pageId);
       } else {
         const { data, error: insertError } = await supabase
           .from('pages')
@@ -233,9 +285,11 @@ export default function WikiPageEditor() {
           throw insertError;
         }
         pageId = data.id;
+        console.log('Page created successfully, ID:', pageId);
       }
 
       // Create Revision
+      console.log('Creating revision for page:', pageId);
       const { error: revError } = await supabase
         .from('revisions')
         .insert({
@@ -246,12 +300,12 @@ export default function WikiPageEditor() {
           created_at: new Date().toISOString()
         });
 
-      if (revError) throw revError;
+      if (revError) console.warn('Revision failed to save (non-critical):', revError);
 
       navigate(`/wiki/${pageSlug}`);
     } catch (err: any) {
       console.error('Error saving page:', err);
-      setError(err.message);
+      setError(`Gagal menyimpan: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -424,6 +478,42 @@ export default function WikiPageEditor() {
 
           {/* Universe & Settings */}
           <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-200 space-y-8">
+            <div className="space-y-3">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                <ImageIcon size={14} className="text-indigo-500" /> Header Banner Image
+              </label>
+              <div 
+                onClick={() => bannerInputRef.current?.click()}
+                className="relative group cursor-pointer aspect-video rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 overflow-hidden hover:border-indigo-400 transition-all flex items-center justify-center"
+              >
+                {imageUrl ? (
+                  <>
+                    <img src={imageUrl} alt="Banner" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <span className="text-white text-xs font-bold uppercase tracking-wider">Change Banner</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center space-y-2">
+                    <ImageIcon size={32} className="mx-auto text-slate-300" />
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Upload Header Image</p>
+                  </div>
+                )}
+                {isBannerUploading && (
+                  <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                    <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                  </div>
+                )}
+              </div>
+              <input 
+                type="file" 
+                ref={bannerInputRef} 
+                onChange={handleBannerUpload} 
+                className="hidden" 
+                accept="image/*"
+              />
+            </div>
+
             <div className="space-y-3">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
                 <Tag size={14} className="text-indigo-500" /> Universe Category

@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { supabase } from '@/src/lib/supabase';
 import { WikiPage } from '@/src/types';
 import { BookOpen, ChevronRight, TrendingUp, Filter, Search } from 'lucide-react';
-import { cn } from '@/src/lib/utils';
+import { cn, parseCharacterMetadata } from '@/src/lib/utils';
 
 export default function CategoryPage() {
   const { category } = useParams();
@@ -24,7 +24,15 @@ export default function CategoryPage() {
       .ilike('category', category || '')
       .order('updated_at', { ascending: false });
 
-    if (!error) setPages(data || []);
+    if (error) {
+      console.error('Error fetching category pages:', error);
+    } else {
+      const processedPages = (data || []).map(p => ({
+        ...p,
+        character: parseCharacterMetadata(p.content || '')
+      }));
+      setPages(processedPages);
+    }
     setLoading(false);
   };
 
@@ -98,16 +106,22 @@ export default function CategoryPage() {
               </div>
               <div className="p-8 flex-1 flex flex-col">
                 <div className="flex justify-between items-start mb-4">
-                  <h3 className="text-2xl font-bold group-hover:text-indigo-600 transition-colors tracking-tight">
+                  <h3 className="text-2xl font-bold group-hover:text-indigo-600 transition-colors tracking-tight line-clamp-1">
                     {page.title}
                   </h3>
                   <TrendingUp size={16} className="text-emerald-500" />
                 </div>
+
+                {page.character?.alias && (
+                  <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest mb-3">"{page.character.alias}"</p>
+                )}
                 
                 <div className="mt-auto pt-6 border-t border-slate-50 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-lg bg-indigo-50 border border-slate-100" />
-                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Chronicler Proxy</span>
+                    <div className="w-6 h-6 rounded-lg bg-indigo-50 border border-slate-100 overflow-hidden">
+                      <img src={`https://i.pravatar.cc/100?u=${page.author_id}`} alt="avatar" />
+                    </div>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Chronicler Lore</span>
                   </div>
                   <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-all">
                     <ChevronRight size={16} />
